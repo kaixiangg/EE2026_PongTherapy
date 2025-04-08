@@ -31,6 +31,8 @@ module YS_Level(
     localparam PADDLE_COLOR = 16'hFFFF; // White
     localparam BALL_COLOR   = 16'hF800; // Red
     localparam BG_COLOR     = 16'h0000; // Black
+    localparam COLOR_PORTAL1 = 16'h07FF; // Neon Cyan
+    localparam COLOR_PORTAL2 = 16'hF81F; // Neon Magenta
 
     //-------------------------------------------------------------------------
     // Wires & Regs
@@ -60,10 +62,16 @@ module YS_Level(
     wire [6:0] paddle_x_pos;    // Paddle X position FROM Paddle
 
     // --- Ball Interface ---
+    wire [8:0] ball_left_pixel; // Ball x coordinates, LEFT of ball
+    wire [7:0] ball_top_pixel; // Ball y coordinates, TOP of ball
     wire ball_pixel;            // Pixel is ball? FROM Ball
     wire ball_lost;             // Ball below screen? FROM Ball
     reg [BALL_COUNTER_BITS-1:0] ball_update_counter = 0;
     wire ball_update_enable;    // Single-cycle enable pulse for Ball module
+    
+    // --- Portal Interface ---
+    wire portal1_on, portal2_on;
+    wire portal1_spark_on, portal2_spark_on;
 
     //-------------------------------------------------------------------------
     // Clock Generation
@@ -165,7 +173,13 @@ module YS_Level(
         .current_pixel_x(pixel_x),
         .current_pixel_y(pixel_y),
         .ball_pixel(ball_pixel),            // Output: Should current pixel be ball color?
-        .ball_lost(ball_lost)               // Output: Has ball gone off bottom?
+        .ball_lost(ball_lost),               // Output: Has ball gone off bottom?
+        .ball_pixel_x(ball_left_pixel),
+        .ball_pixel_y(ball_top_pixel),
+        .portal1_pixel(portal1_on),
+        .portal2_pixel(portal2_on),
+        .portal1_spark_pixel(portal1_spark_on),
+        .portal2_spark_pixel(portal2_spark_on)
     );
 
     //-------------------------------------------------------------------------
@@ -175,6 +189,10 @@ module YS_Level(
     // Determine final pixel color based on which object is present (priority: Ball > Paddle > Background)
     assign oled_data = ball_pixel ? BALL_COLOR :      // If it's the ball, draw ball color
                        paddle_pixel ? PADDLE_COLOR :  // Else if it's the paddle, draw paddle color
+                       portal1_on ? COLOR_PORTAL1 :
+                       portal2_on ? COLOR_PORTAL2 :
+                       portal1_spark_on ? COLOR_PORTAL1 :
+                       portal2_spark_on ? COLOR_PORTAL2 :
                        BG_COLOR;                      // Otherwise, draw background color
 
 endmodule
