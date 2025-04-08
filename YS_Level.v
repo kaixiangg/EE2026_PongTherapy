@@ -65,6 +65,8 @@ module YS_Level(
     wire [11:0] ypos;           // Raw Y position FROM MouseCtl (unused here)
     wire [3:0] zpos;            // Scroll wheel FROM MouseCtl (unused here)
     wire new_event;             // New data flag FROM MouseCtl
+    wire [11:0] inverted_xpos;
+    assign inverted_xpos = SCALED_X_BOUNDARY - xpos;
 
     // --- Paddle Interface ---
     wire paddle_pixel;          // Pixel is paddle? FROM Paddle
@@ -147,7 +149,7 @@ module YS_Level(
         .clk(clk_100MHz),
         .reset(rst),
         .new_event(new_event),       // From MouseCtl
-        .x_position(xpos),           // Raw mouse X from MouseCtl
+        .x_position(inverted_xpos),           // Raw mouse X from MouseCtl
         .current_pixel_y(pixel_y),   // Current scanline Y
         .current_pixel_x(pixel_x),   // Current scanline X
         .paddle_x_pos(paddle_x_pos), // Output: Paddle's logical X position
@@ -176,6 +178,8 @@ module YS_Level(
     //-------------------------------------------------------------------------
     // Pixel Color Multiplexing
     //-------------------------------------------------------------------------
+    // Can uncomment the edge_sparks for potentially more complex patterns
+    // but looks messy for now
     assign oled_data =
        ball_pixel ? BALL_COLOR :                     // 1. Ball
        paddle_pixel ? PADDLE_COLOR :                 // 2. Paddle
