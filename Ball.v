@@ -13,7 +13,9 @@ module Ball(
     output portal1_pixel,
     output portal2_pixel,
     output portal1_spark_pixel,
-    output portal2_spark_pixel
+    output portal2_spark_pixel,
+    output portal1_edge_pixel,
+    output portal2_edge_pixel 
 );
     parameter BALL_SIZE = 3;        // Ball width/height in pixels (Square shape)
     parameter SCREEN_WIDTH = 96;
@@ -257,26 +259,72 @@ module Ball(
             (current_pixel_x == (PORTAL2_X + PORTAL_WIDTH - 1)) ||          // Right edge
             (current_pixel_y == PORTAL2_Y) ||                              // Top edge
             (current_pixel_y == (PORTAL2_Y + PORTAL_HEIGHT - 1))            // Bottom edge
-        );                  
- 
-    // --- Flickering Spark Display ---
-    wire spark_active = (dy_counter == 2'b10); // Sparks are ON only during one state of the counter
+        );       
+                   
+    // --- Portal Animation Timing ---
+    // (This logic remains the same)
+    wire spark_active = (dy_counter == 2'b10); // Corner sparks ON when counter is 10
+    wire edge_flash_active = (dy_counter == 2'b00); // Edge flash ON when counter is 00
 
-    // Define spark positions relative to corners (just outside)
+    // --- Enhanced Flickering Corner Spark Positions ---
+    // Now defines 2 pixels extending diagonally from each corner
     // Portal 1 Sparks
-    wire p1_spark_tl = (current_pixel_x == PORTAL1_X - 1) && (current_pixel_y == PORTAL1_Y - 1); // Top-Left
-    wire p1_spark_tr = (current_pixel_x == PORTAL1_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL1_Y - 1); // Top-Right
-    wire p1_spark_bl = (current_pixel_x == PORTAL1_X - 1) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT); // Bottom-Left
-    wire p1_spark_br = (current_pixel_x == PORTAL1_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT); // Bottom-Right
+    wire p1_spark_tl = ((current_pixel_x == PORTAL1_X - 1) && (current_pixel_y == PORTAL1_Y - 1)) || // Diag out
+                       ((current_pixel_x == PORTAL1_X - 2) && (current_pixel_y == PORTAL1_Y - 2));  // One more diag out
+    wire p1_spark_tr = ((current_pixel_x == PORTAL1_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL1_Y - 1)) || // Diag out
+                       ((current_pixel_x == PORTAL1_X + PORTAL_WIDTH + 1) && (current_pixel_y == PORTAL1_Y - 2)); // One more diag out
+    wire p1_spark_bl = ((current_pixel_x == PORTAL1_X - 1) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT)) || // Diag out
+                       ((current_pixel_x == PORTAL1_X - 2) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT + 1)); // One more diag out
+    wire p1_spark_br = ((current_pixel_x == PORTAL1_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT)) || // Diag out
+                       ((current_pixel_x == PORTAL1_X + PORTAL_WIDTH + 1) && (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT + 1)); // One more diag out
 
     // Portal 2 Sparks
-    wire p2_spark_tl = (current_pixel_x == PORTAL2_X - 1) && (current_pixel_y == PORTAL2_Y - 1); // Top-Left
-    wire p2_spark_tr = (current_pixel_x == PORTAL2_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL2_Y - 1); // Top-Right
-    wire p2_spark_bl = (current_pixel_x == PORTAL2_X - 1) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT); // Bottom-Left
-    wire p2_spark_br = (current_pixel_x == PORTAL2_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT); // Bottom-Right
+    wire p2_spark_tl = ((current_pixel_x == PORTAL2_X - 1) && (current_pixel_y == PORTAL2_Y - 1)) ||
+                       ((current_pixel_x == PORTAL2_X - 2) && (current_pixel_y == PORTAL2_Y - 2));
+    wire p2_spark_tr = ((current_pixel_x == PORTAL2_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL2_Y - 1)) ||
+                       ((current_pixel_x == PORTAL2_X + PORTAL_WIDTH + 1) && (current_pixel_y == PORTAL2_Y - 2));
+    wire p2_spark_bl = ((current_pixel_x == PORTAL2_X - 1) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT)) ||
+                       ((current_pixel_x == PORTAL2_X - 2) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT + 1));
+    wire p2_spark_br = ((current_pixel_x == PORTAL2_X + PORTAL_WIDTH) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT)) ||
+                       ((current_pixel_x == PORTAL2_X + PORTAL_WIDTH + 1) && (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT + 1));
 
-    // Assign spark outputs
+    // --- Enhanced Flickering Center Edge Positions ---
+    // Defines middle 4 pixels for top/bottom and full 3 pixels for left/right
+    localparam EDGE_SEGMENT_LEN = 4; // Length of top/bottom flash
+    localparam EDGE_SEGMENT_START = (PORTAL_WIDTH - EDGE_SEGMENT_LEN) / 2; // Start index for segment (10-4)/2 = 3
+
+    // Portal 1 Edges
+    wire p1_edge_t = (current_pixel_y == PORTAL1_Y) &&
+                     (current_pixel_x >= PORTAL1_X + EDGE_SEGMENT_START) &&
+                     (current_pixel_x < PORTAL1_X + EDGE_SEGMENT_START + EDGE_SEGMENT_LEN); // Top segment
+    wire p1_edge_b = (current_pixel_y == PORTAL1_Y + PORTAL_HEIGHT - 1) &&
+                     (current_pixel_x >= PORTAL1_X + EDGE_SEGMENT_START) &&
+                     (current_pixel_x < PORTAL1_X + EDGE_SEGMENT_START + EDGE_SEGMENT_LEN); // Bottom segment
+    wire p1_edge_l = (current_pixel_x == PORTAL1_X) &&
+                     (current_pixel_y >= PORTAL1_Y) &&
+                     (current_pixel_y < PORTAL1_Y + PORTAL_HEIGHT); // Full Left edge
+    wire p1_edge_r = (current_pixel_x == PORTAL1_X + PORTAL_WIDTH - 1) &&
+                     (current_pixel_y >= PORTAL1_Y) &&
+                     (current_pixel_y < PORTAL1_Y + PORTAL_HEIGHT); // Full Right edge
+
+    // Portal 2 Edges
+    wire p2_edge_t = (current_pixel_y == PORTAL2_Y) &&
+                     (current_pixel_x >= PORTAL2_X + EDGE_SEGMENT_START) &&
+                     (current_pixel_x < PORTAL2_X + EDGE_SEGMENT_START + EDGE_SEGMENT_LEN); // Top segment
+    wire p2_edge_b = (current_pixel_y == PORTAL2_Y + PORTAL_HEIGHT - 1) &&
+                     (current_pixel_x >= PORTAL2_X + EDGE_SEGMENT_START) &&
+                     (current_pixel_x < PORTAL2_X + EDGE_SEGMENT_START + EDGE_SEGMENT_LEN); // Bottom segment
+    wire p2_edge_l = (current_pixel_x == PORTAL2_X) &&
+                     (current_pixel_y >= PORTAL2_Y) &&
+                     (current_pixel_y < PORTAL2_Y + PORTAL_HEIGHT); // Full Left edge
+    wire p2_edge_r = (current_pixel_x == PORTAL2_X + PORTAL_WIDTH - 1) &&
+                     (current_pixel_y >= PORTAL2_Y) &&
+                     (current_pixel_y < PORTAL2_Y + PORTAL_HEIGHT); // Full Right edge
+
+    // --- Assign Final Outputs ---
     assign portal1_spark_pixel = spark_active && (p1_spark_tl || p1_spark_tr || p1_spark_bl || p1_spark_br);
     assign portal2_spark_pixel = spark_active && (p2_spark_tl || p2_spark_tr || p2_spark_bl || p2_spark_br);
-                    
-endmodule
+    assign portal1_edge_pixel = edge_flash_active && (p1_edge_t || p1_edge_b || p1_edge_l || p1_edge_r);
+    assign portal2_edge_pixel = edge_flash_active && (p2_edge_t || p2_edge_b || p2_edge_l || p2_edge_r);
+    
+    endmodule

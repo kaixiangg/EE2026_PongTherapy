@@ -16,6 +16,13 @@ module YS_Level(
     localparam PADDLE_WIDTH = 14;
     localparam PADDLE_HEIGHT = 3; // Ensure this matches Paddle module internal logic if not parameterized
     localparam BALL_SIZE = 3;     // Ensure this matches Ball module parameter
+    localparam COLOR_LIME_GREEN = 16'h07E0; // (R=0, G=63, B=0) - Pure bright green.
+    localparam COLOR_ELECTRIC_BLUE = 16'h051F;// (R=0, G=40, B=31) - Bright blue, less green than cyan.
+    localparam COLOR_ORANGE = 16'hFC00; // (R=31, G=32, B=0) - Bright orange.
+    localparam COLOR_HOT_PINK = 16'hF95F; // (R=31, G=10, B=31) - Bright, less "purple" than magenta.
+    localparam COLOR_SPRING_GREEN = 16'h07EF;// (R=0, G=63, B=15) - Bright green with a hint of blue.
+    localparam COLOR_BLUE = 16'h001F;
+    localparam COLOR_VIOLET = 16'h781F;
 
     // Mouse Parameters (kept from original)
     localparam MOUSE_SENSITIVITY_DIVIDER = 16;
@@ -33,6 +40,8 @@ module YS_Level(
     localparam BG_COLOR     = 16'h0000; // Black
     localparam COLOR_PORTAL1 = 16'h07FF; // Neon Cyan
     localparam COLOR_PORTAL2 = 16'hF81F; // Neon Magenta
+    localparam COLOR_SPARK_EDGE1 = 16'hFFE0; // Bright Yellow for Portal 1 effects
+    localparam COLOR_SPARK_EDGE2 = 16'hFFFF; // Bright White for Portal 2 effects (Example)
 
     //-------------------------------------------------------------------------
     // Wires & Regs
@@ -66,12 +75,11 @@ module YS_Level(
     wire [7:0] ball_top_pixel; // Ball y coordinates, TOP of ball
     wire ball_pixel;            // Pixel is ball? FROM Ball
     wire ball_lost;             // Ball below screen? FROM Ball
-    reg [BALL_COUNTER_BITS-1:0] ball_update_counter = 0;
-    wire ball_update_enable;    // Single-cycle enable pulse for Ball module
     
     // --- Portal Interface ---
     wire portal1_on, portal2_on;
     wire portal1_spark_on, portal2_spark_on;
+    wire portal1_edge_spark_on, portal2_edge_spark_on;
 
     //-------------------------------------------------------------------------
     // Clock Generation
@@ -84,25 +92,6 @@ module YS_Level(
     // Translate linear pixel index from OLED driver to X, Y coordinates
     assign pixel_x = pixel_index % SCREEN_WIDTH; // Remainder gives X
     assign pixel_y = pixel_index / SCREEN_WIDTH; // Integer division gives Y
-
-    //-------------------------------------------------------------------------
-    // Ball Update Enable Generator
-    //-------------------------------------------------------------------------
-    // Use this over 60Hz clock because this is synchronous with the 100MHz clk
-    // Creates a single-cycle pulse 'ball_update_enable' every BALL_UPDATE_PERIOD cycles
-    assign ball_update_enable = (ball_update_counter == BALL_UPDATE_PERIOD - 1);
-
-    always @(posedge clk_100MHz) begin
-        if (rst || ball_lost) begin // Reset counter on system reset or when ball is lost
-            ball_update_counter <= 0;
-        end else begin
-            if (ball_update_enable) begin // Check if counter reached the end
-                ball_update_counter <= 0;
-            end else begin
-                ball_update_counter <= ball_update_counter + 1;
-            end
-        end
-    end
 
     //-------------------------------------------------------------------------
     // Module Instantiations
@@ -179,20 +168,28 @@ module YS_Level(
         .portal1_pixel(portal1_on),
         .portal2_pixel(portal2_on),
         .portal1_spark_pixel(portal1_spark_on),
-        .portal2_spark_pixel(portal2_spark_on)
+        .portal2_spark_pixel(portal2_spark_on),
+        .portal1_edge_pixel(portal1_edge_spark_on),  
+        .portal2_edge_pixel(portal2_edge_spark_on)   
     );
 
     //-------------------------------------------------------------------------
     // Pixel Color Multiplexing
     //-------------------------------------------------------------------------
-
-    // Determine final pixel color based on which object is present (priority: Ball > Paddle > Background)
-    assign oled_data = ball_pixel ? BALL_COLOR :      // If it's the ball, draw ball color
-                       paddle_pixel ? PADDLE_COLOR :  // Else if it's the paddle, draw paddle color
-                       portal1_on ? COLOR_PORTAL1 :
-                       portal2_on ? COLOR_PORTAL2 :
-                       portal1_spark_on ? COLOR_PORTAL1 :
-                       portal2_spark_on ? COLOR_PORTAL2 :
-                       BG_COLOR;                      // Otherwise, draw background color
-
+    assign oled_data =
+       ball_pixel ? BALL_COLOR :                     // 1. Ball
+       paddle_pixel ? PADDLE_COLOR :                 // 2. Paddle
+       
+       // Portal 1 Effects (Sparks/Edges first)
+       portal1_spark_on ? COLOR_SPARK_EDGE1 :
+       //portal1_edge_spark_on ? COLOR_ELECTRIC_BLUE :
+       portal1_on ? COLOR_PORTAL1 :                  // Portal 1 Border last for P1
+       
+       // Portal 2 Effects (Sparks/Edges first)
+       portal2_spark_on ? COLOR_SPARK_EDGE2 :
+       //portal2_edge_spark_on ? COLOR_VIOLET :
+       portal2_on ? COLOR_PORTAL2 :                  // Portal 2 Border last for P2
+       
+       // Default Background
+       BG_COLOR;
 endmodule
