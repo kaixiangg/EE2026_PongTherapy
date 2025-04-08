@@ -82,6 +82,10 @@ module YS_Level(
     wire portal1_on, portal2_on;
     wire portal1_spark_on, portal2_spark_on;
     wire portal1_edge_spark_on, portal2_edge_spark_on;
+    
+    // --- Instruction Text Interface ---
+    wire portal1_text_on;
+    wire portal2_text_on;
 
     //-------------------------------------------------------------------------
     // Clock Generation
@@ -175,14 +179,25 @@ module YS_Level(
         .portal2_edge_pixel(portal2_edge_spark_on)   
     );
 
+    // --- Instruction Text Display Logic ---
+    YS_Level_Instructions instruction_display (
+        .clk_100MHz(clk_100MHz),
+        .rst(rst),
+        .current_pixel_x(pixel_x),         // From coordinate calc
+        .current_pixel_y(pixel_y),         // From coordinate calc
+        .portal1_text_pixel(portal1_text_on), // Output wire
+        .portal2_text_pixel(portal2_text_on)  // Output wire
+    );
     //-------------------------------------------------------------------------
     // Pixel Color Multiplexing
     //-------------------------------------------------------------------------
     // Can uncomment the edge_sparks for potentially more complex patterns
     // but looks messy for now
     assign oled_data =
-       ball_pixel ? BALL_COLOR :                     // 1. Ball
-       paddle_pixel ? PADDLE_COLOR :                 // 2. Paddle
+       portal1_text_on ? PADDLE_COLOR :                // 1. Instruction Text 1
+       portal2_text_on ? PADDLE_COLOR :     
+       ball_pixel ? BALL_COLOR :                     // Ball
+       paddle_pixel ? PADDLE_COLOR :                 // Paddle
        
        // Portal 1 Effects (Sparks/Edges first)
        portal1_spark_on ? COLOR_SPARK_EDGE1 :
