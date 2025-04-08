@@ -17,6 +17,7 @@ module Ball(
     output portal1_edge_pixel,
     output portal2_edge_pixel 
 );
+
     parameter BALL_SIZE = 3;        // Ball width/height in pixels (Square shape)
     parameter SCREEN_WIDTH = 96;
     parameter SCREEN_HEIGHT = 64;

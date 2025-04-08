@@ -8,7 +8,7 @@ module Main(
     output [7:0] JC
     );
     
-    YS_Level inst0 (clk_100MHz, btnC, PS2Clk, PS2Data, JC);
+    Tutorial_Level inst0 (clk_100MHz, btnC, PS2Clk, PS2Data, JC);
     
 endmodule
 
