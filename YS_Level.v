@@ -166,7 +166,7 @@ module YS_Level(
     );
 
     // --- Ball Logic & Physics ---
-    Ball ball_instance (
+    YS_ball ball_instance (
         .clk_100MHz(clk_100MHz),
         .rst(filtered_reset),
         .paddle_x_pos(paddle_x_pos),        // From Paddle instance
